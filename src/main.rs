@@ -19,7 +19,6 @@ struct User {
     age: i32,
 }
 
-// Now we use String for age to simulate the potential for invalid data
 fn generate_data(valid: bool) -> Vec<(i32, String, String)> {
     if valid {
         vec![
