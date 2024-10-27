@@ -19,46 +19,41 @@ struct User {
     age: i32,
 }
 
-#[derive(Debug)]
-enum AgeData {
-    Valid(i32),
-    Invalid(String),
-}
-
-fn generate_data(valid: bool) -> Vec<(i32, String, AgeData)> {
+// Now we use String for age to simulate the potential for invalid data
+fn generate_data(valid: bool) -> Vec<(i32, String, String)> {
     if valid {
         vec![
-            (1, "Alice".to_string(), AgeData::Valid(25)),
-            (2, "Bob".to_string(), AgeData::Valid(30)),
-            (3, "Charlie".to_string(), AgeData::Valid(35)),
+            (1, "Alice".to_string(), "25".to_string()),
+            (2, "Bob".to_string(), "30".to_string()),
+            (3, "Charlie".to_string(), "35".to_string()),
         ]
     } else {
         vec![
-            (1, "Alice".to_string(), AgeData::Valid(25)),
-            (2, "Bob".to_string(), AgeData::Invalid("thirty".to_string())),
-            (3, "Charlie".to_string(), AgeData::Valid(35)),
+            (1, "Alice".to_string(), "25".to_string()),
+            (2, "Bob".to_string(), "thirty".to_string()),
+            (3, "Charlie".to_string(), "35".to_string()),
         ]
     }
 }
 
-fn validate_data(data: Vec<(i32, String, AgeData)>) -> Result<Vec<User>, ValidationError> {
+fn validate_data(data: Vec<(i32, String, String)>) -> Result<Vec<User>, ValidationError> {
     let mut users = Vec::new();
 
     for (id_data, name_data, age_data) in data {
-        let age = match age_data {
-            AgeData::Valid(age) => age,
-            AgeData::Invalid(invalid_value) => {
-                return Err(ValidationError(format!("Invalid age value: {}", invalid_value)))
-            }
-        };
+        let age = age_data.parse::<i32>().map_err(|_| {
+            ValidationError(format!("Invalid age value: {}", age_data))
+        })?;
+
         let id = match id_data {
             id if id > 0 => id,
             _ => return Err(ValidationError("Invalid id value".to_string())),
         };
+
         let name = match name_data.len() {
             len if len > 0 => name_data,
             _ => return Err(ValidationError("Invalid name value".to_string())),
         };
+
         users.push(User { id, name, age });
     }
 
@@ -75,7 +70,27 @@ fn add_is_adult(users: Vec<User>) -> Result<Vec<(User, bool)>, ValidationError> 
 fn summarize_data(users_with_adult: Vec<(User, bool)>) -> Result<String, ValidationError> {
     let total_age: i32 = users_with_adult.iter().map(|(user, _)| user.age).sum();
     let avg_age = total_age as f64 / users_with_adult.len() as f64;
-    Ok(format!("Average age is {:.1}", avg_age))
+
+    let oldest_user = users_with_adult.iter()
+        .max_by_key(|(user, _)| user.age)
+        .map(|(user, _)| user)
+        .unwrap();
+
+    let adult_count = users_with_adult.iter()
+        .filter(|(_, is_adult)| *is_adult)
+        .count();
+
+    Ok(format!(
+        "Summary:\n\
+         - Average age is {:.1}\n\
+         - Oldest user is {} (ID: {}) at age {}\n\
+         - Number of adults: {}",
+        avg_age,
+        oldest_user.name,
+        oldest_user.id,
+        oldest_user.age,
+        adult_count
+    ))
 }
 
 fn process_user_data(valid: bool) -> Result<String, Box<dyn StdError>> {
@@ -93,13 +108,17 @@ fn process_user_data(valid: bool) -> Result<String, Box<dyn StdError>> {
 }
 
 fn main() {
+    // Test with valid data
     match process_user_data(true) {
-        Ok(summary) => println!("Success: {}", summary),
+        Ok(summary) => println!("Success:\n{}", summary),
         Err(error) => println!("Error: {}", error),
     }
 
+    println!("\n---\n");
+
+    // Test with invalid data
     match process_user_data(false) {
-        Ok(summary) => println!("Success: {}", summary),
+        Ok(summary) => println!("Success:\n{}", summary),
         Err(error) => println!("Error: {}", error),
     }
 }
